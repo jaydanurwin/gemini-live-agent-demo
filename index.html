@@ -1,85 +1,141 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gemini Live Agent Demo</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    >
+    <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js"></script>
     <style>
-      body { font-family: 'Inter', sans-serif; }
+      body {
+        font-family: "Inter", sans-serif;
+      }
       /* Custom scrollbar for a cleaner look */
       ::-webkit-scrollbar {
         width: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #f4f4f5; 
+        background: #f4f4f5;
       }
       ::-webkit-scrollbar-thumb {
-        background: #d4d4d8; 
+        background: #d4d4d8;
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #a1a1aa; 
+        background: #a1a1aa;
       }
     </style>
   </head>
-  <body class="bg-white text-zinc-950 min-h-screen flex items-center justify-center p-4 selection:bg-zinc-100">
+  <body
+    class="bg-white text-zinc-950 min-h-screen flex items-center justify-center p-4 selection:bg-zinc-100"
+  >
     <!-- Main Container -->
-    <div class="w-full max-w-md bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
-      
+    <div
+      class="w-full max-w-md bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden"
+    >
       <!-- Header -->
-      <div class="px-6 py-5 border-b border-zinc-100 flex items-center justify-between">
+      <div
+        class="px-6 py-5 border-b border-zinc-100 flex items-center justify-between"
+      >
         <div>
           <h1 class="text-lg font-semibold tracking-tight">Gemini Live</h1>
           <p class="text-zinc-500 text-xs">Multimodal Agent</p>
         </div>
-        <div id="connection-status" class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-zinc-50 border border-zinc-200 text-[10px] font-medium text-zinc-500">
-          <span class="w-1.5 h-1.5 rounded-full bg-zinc-400 transition-colors duration-300" id="status-dot"></span>
+        <div
+          id="connection-status"
+          class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-zinc-50 border border-zinc-200 text-[10px] font-medium text-zinc-500"
+        >
+          <span
+            class="w-1.5 h-1.5 rounded-full bg-zinc-400 transition-colors duration-300"
+            id="status-dot"
+          ></span>
           <span id="status-text">Disconnected</span>
         </div>
       </div>
 
       <!-- Content -->
       <div class="p-6 space-y-6">
-        
         <!-- Text Input Section -->
         <div class="space-y-2">
-          <label for="input" class="block text-xs font-medium text-zinc-500">Message</label>
+          <label for="input" class="block text-xs font-medium text-zinc-500"
+          >Message</label>
           <form class="relative group">
-            <input 
-              id="input" 
-              type="text" 
-              placeholder="Type a message..." 
+            <input
+              id="input"
+              type="text"
+              placeholder="Type a message..."
               class="w-full bg-white border border-zinc-200 text-zinc-900 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-950/5 focus:border-zinc-400 transition-all placeholder:text-zinc-400"
               autocomplete="off"
             />
-            <button type="submit" class="absolute right-1.5 top-1.5 p-1.5 bg-zinc-50 hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 rounded-md transition-colors border border-zinc-200">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            <button
+              type="submit"
+              </svg>
             </button>
           </form>
         </div>
 
         <!-- Divider -->
         <div class="relative">
-          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-zinc-100"></div></div>
-          <div class="relative flex justify-center text-[10px] uppercase tracking-widest"><span class="bg-white px-2 text-zinc-400">Voice</span></div>
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-zinc-100"></div>
+          </div>
+          <div
+            class="relative flex justify-center text-[10px] uppercase tracking-widest"
+          >
+            <span class="bg-white px-2 text-zinc-400">Voice</span>
+          </div>
         </div>
 
         <!-- Voice Section -->
         <div class="flex flex-col items-center gap-4">
-          <button id="record" class="group relative flex items-center justify-center w-16 h-16 rounded-full bg-zinc-900 text-white hover:bg-zinc-800 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-zinc-900/10">
-             <!-- Icon for Mic -->
-            <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-            <!-- Icon for Stop (hidden by default) -->
-            <svg id="stop-icon" class="hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+          <div class="flex flex-col items-center gap-2 w-full">
             
-            <!-- Pulse effect when recording -->
-            <span id="record-ring" class="absolute inset-0 rounded-full border border-red-500/30 scale-110 opacity-0 transition-all duration-1000"></span>
-          </button>
-          <p id="record-status" class="text-xs font-medium text-zinc-400">Tap to speak</p>
-        </div>
+            <!-- Initial Connect Button -->
+            <button id="connect-button" class="group relative flex items-center justify-center w-16 h-16 rounded-full bg-zinc-900 text-white hover:bg-zinc-800 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-zinc-900/10">
+               <iconify-icon icon="lucide:mic" width="24" height="24"></iconify-icon>
+               <span id="connect-ring" class="absolute inset-0 rounded-full border border-zinc-500/30 scale-110 opacity-0 transition-all duration-1000"></span>
+            </button>
 
+            <!-- Active Controls (Hidden initially) -->
+            <div id="active-controls" class="hidden flex items-center gap-4">
+                <!-- Mute Button -->
+                <button id="mute-button" class="group flex items-center justify-center w-12 h-12 rounded-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 transition-all duration-300">
+                    <iconify-icon id="mute-icon-on" icon="lucide:mic" width="20" height="20"></iconify-icon>
+                    <iconify-icon id="mute-icon-off" icon="lucide:mic-off" width="20" height="20" class="hidden"></iconify-icon>
+                </button>
+
+                <!-- Hangup Button -->
+                <button id="hangup-button" class="group flex items-center justify-center w-16 h-16 rounded-full bg-red-500 text-white hover:bg-red-600 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-red-500/20">
+                    <iconify-icon icon="lucide:phone-off" width="24" height="24"></iconify-icon>
+                </button>
+            </div>
+
+            <p id="record-status" class="text-xs font-medium text-zinc-400">Tap to start</p>
+          </div>
+
+          <!-- Mic Selection -->
+          <div class="w-full max-w-[200px]">
+            <select
+              id="mic-select"
+              class="w-full bg-zinc-50 border border-zinc-200 text-zinc-600 text-xs rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-zinc-950/5 focus:border-zinc-400 transition-all cursor-pointer"
+            >
+              <option value="" disabled selected>Select microphone</option>
+            </select>
+          </div>
+
+          <!-- Text Response Display -->
+          <div id="text-response-container" class="w-full mt-4 hidden">
+             <div class="relative">
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-zinc-100"></div></div>
+                <div class="relative flex justify-center text-[10px] uppercase tracking-widest"><span class="bg-white px-2 text-zinc-400">Transcript</span></div>
+             </div>
+             <div id="text-response" class="mt-4 h-32 overflow-y-auto p-3 bg-zinc-50 rounded-lg border border-zinc-100 text-sm text-zinc-600 leading-relaxed font-mono"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -94,42 +150,49 @@
       let nextStartTime = 0;
 
       // UI Elements
-      const statusDot = document.getElementById('status-dot');
-      const statusText = document.getElementById('status-text');
-      const recordBtn = document.getElementById('record');
-      const micIcon = document.getElementById('mic-icon');
-      const stopIcon = document.getElementById('stop-icon');
+      const statusDot = document.getElementById("status-dot");
+      const statusText = document.getElementById("status-text");
       const recordStatus = document.getElementById('record-status');
-      const recordRing = document.getElementById('record-ring');
+      const connectButton = document.getElementById('connect-button');
+      const activeControls = document.getElementById('active-controls');
+      const muteButton = document.getElementById('mute-button');
+      const hangupButton = document.getElementById('hangup-button');
+      const muteIconOn = document.getElementById('mute-icon-on');
+      const muteIconOff = document.getElementById('mute-icon-off');
+      const micSelect = document.getElementById('mic-select');
+      const textResponseContainer = document.getElementById('text-response-container');
+      const textResponse = document.getElementById('text-response');
+      
+      let isMuted = false;
 
       function updateStatus(connected) {
         if (connected) {
-          statusDot.classList.remove('bg-zinc-400', 'bg-red-500');
-          statusDot.classList.add('bg-emerald-500');
-          statusText.textContent = 'Connected';
-          statusText.classList.remove('text-zinc-500');
-          statusText.classList.add('text-emerald-600');
+          statusDot.classList.remove("bg-zinc-400", "bg-red-500");
+          statusDot.classList.add("bg-emerald-500");
+          statusText.textContent = "Connected";
+          statusText.classList.remove("text-zinc-500");
+          statusText.classList.add("text-emerald-600");
         } else {
-          statusDot.classList.remove('bg-emerald-500');
-          statusDot.classList.add('bg-red-500');
-          statusText.textContent = 'Disconnected';
-          statusText.classList.remove('text-emerald-600');
-          statusText.classList.add('text-zinc-500');
+          statusDot.classList.remove("bg-emerald-500");
+          statusDot.classList.add("bg-red-500");
+          statusText.textContent = "Disconnected";
+          statusText.classList.remove("text-emerald-600");
+          statusText.classList.add("text-zinc-500");
         }
       }
 
-      socket.onopen = function() {
-        console.log('WebSocket connected');
+      socket.onopen = function () {
+        console.log("WebSocket connected");
         updateStatus(true);
       };
 
-      socket.onerror = function(error) {
-        console.error('WebSocket error:', error);
+      socket.onerror = function (error) {
+        console.error("WebSocket error:", error);
         updateStatus(false);
       };
 
-      socket.onclose = function() {
-        console.log('WebSocket disconnected');
+      socket.onclose = function () {
+        console.log("WebSocket disconnected");
         updateStatus(false);
       };
 
@@ -140,7 +203,12 @@
         event.preventDefault();
 
         if (input.value.trim() !== "") {
-          socket.send(JSON.stringify({type: 'contentUpdateText', text: input.value}));
+          socket.send(
+            JSON.stringify({
+              type: "contentUpdateText",
+              text: input.value,
+            }),
+          );
         }
 
         form.reset();
@@ -162,7 +230,8 @@
 
         for (let i = 0; i < length; i++) {
           // Combine two bytes into one 16-bit signed integer (little-endian)
-          let sample = audioChunks[i * 2] | (audioChunks[i * 2 + 1] << 8);
+          let sample = audioChunks[i * 2] |
+            (audioChunks[i * 2 + 1] << 8);
           // Convert from 16-bit PCM to Float32 (range -1 to 1)
           if (sample >= 32768) sample -= 65536;
           float32AudioData[i] = sample / 32768;
@@ -174,15 +243,18 @@
       socket.onmessage = async function (event) {
         try {
           const message = JSON.parse(event.data);
-          if (message.type === 'audioStream') {
+          if (message.type === "audioStream") {
             messageQueue.push(base64ToFloat32AudioData(message.data));
 
             if (!queueProcessing) {
               playAudioData();
             }
+          } else if (message.type === 'textStream') {
+            textResponse.textContent += message.data;
+            textResponse.scrollTop = textResponse.scrollHeight;
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error("Error parsing WebSocket message:", error);
         }
       };
 
@@ -198,7 +270,11 @@
           const audioChunks = messageQueue.shift();
 
           // Create an AudioBuffer (Assuming 1 channel and 24k sample rate)
-          const audioBuffer = audioCtx.createBuffer(1, audioChunks.length, 24000);
+          const audioBuffer = audioCtx.createBuffer(
+            1,
+            audioChunks.length,
+            24000,
+          );
           audioBuffer.copyToChannel(audioChunks, 0);
 
           // Create an AudioBufferSourceNode
@@ -220,32 +296,59 @@
         queueProcessing = false;
       }
 
-      recordBtn.onclick = async function (evt) {
-        if (isRecording) {
-          recordStop();
-        } else {
+      connectButton.onclick = async function () {
+        if (!isRecording) {
           await recordStart();
         }
+      };
+
+      muteButton.onclick = function () {
+        if (mediaStream) {
+          const audioTrack = mediaStream.getAudioTracks()[0];
+          isMuted = !isMuted;
+          audioTrack.enabled = !isMuted;
+          
+          if (isMuted) {
+            muteIconOn.classList.add('hidden');
+            muteIconOff.classList.remove('hidden');
+            muteButton.classList.add('bg-red-100', 'text-red-600');
+            muteButton.classList.remove('bg-zinc-100', 'text-zinc-900');
+          } else {
+            muteIconOn.classList.remove('hidden');
+            muteIconOff.classList.add('hidden');
+            muteButton.classList.remove('bg-red-100', 'text-red-600');
+            muteButton.classList.add('bg-zinc-100', 'text-zinc-900');
+          }
+        }
+      };
+
+      hangupButton.onclick = function () {
+        recordStop();
       };
 
       function recordStop() {
         source?.disconnect();
         mediaStream?.getTracks().forEach((track) => track.stop());
         isRecording = false;
+        isMuted = false;
         
         // UI Updates
-        micIcon.classList.remove('hidden');
-        stopIcon.classList.add('hidden');
+        connectButton.classList.remove('hidden');
+        activeControls.classList.add('hidden');
         
-        recordBtn.classList.remove('bg-red-500', 'text-white', 'hover:bg-red-600');
-        recordBtn.classList.add('bg-zinc-900', 'text-white', 'hover:bg-zinc-800');
-        
-        recordRing.classList.remove('animate-pulse', 'opacity-100');
-        recordRing.classList.add('opacity-0');
+        // Reset mute state
+        muteIconOn.classList.remove('hidden');
+        muteIconOff.classList.add('hidden');
+        muteButton.classList.remove('bg-red-100', 'text-red-600');
+        muteButton.classList.add('bg-zinc-100', 'text-zinc-900');
 
-        recordStatus.textContent = "Tap to speak";
+        recordStatus.textContent = "Tap to start";
         recordStatus.classList.remove('text-red-500');
         recordStatus.classList.add('text-zinc-400');
+        
+        // Hide text response
+        textResponseContainer.classList.add('hidden');
+        textResponse.textContent = "";
       }
 
       async function recordStart() {
@@ -253,18 +356,15 @@
         isRecording = true;
 
         // UI Updates
-        micIcon.classList.add('hidden');
-        stopIcon.classList.remove('hidden');
-        
-        recordBtn.classList.remove('bg-zinc-900', 'text-white', 'hover:bg-zinc-800');
-        recordBtn.classList.add('bg-red-500', 'text-white', 'hover:bg-red-600');
+        connectButton.classList.add('hidden');
+        activeControls.classList.remove('hidden');
 
-        recordRing.classList.remove('opacity-0');
-        recordRing.classList.add('animate-pulse', 'opacity-100');
-
-        recordStatus.textContent = "Listening...";
+        recordStatus.textContent = "Live";
         recordStatus.classList.remove('text-zinc-400');
         recordStatus.classList.add('text-red-500');
+        
+        // Show text response
+        textResponseContainer.classList.remove('hidden');
       }
 
       // Recording audio logic reference:
@@ -280,14 +380,24 @@
       }
 
       async function recordAudio() {
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(async (stream) => {
-          mediaStream = stream;
-          const audioContext = new AudioContext({ sampleRate: 16000 });
-          source = audioContext.createMediaStreamSource(stream);
+        const selectedDeviceId = micSelect.value;
+        const constraints = {
+          audio: selectedDeviceId
+            ? { deviceId: { exact: selectedDeviceId } }
+            : true,
+        };
 
-          const workletName = "audio-recorder-worklet";
+        navigator.mediaDevices.getUserMedia(constraints).then(
+          async (stream) => {
+            mediaStream = stream;
+            const audioContext = new AudioContext({
+              sampleRate: 16000,
+            });
+            source = audioContext.createMediaStreamSource(stream);
 
-          const AudioRecordingWorklet = `
+            const workletName = "audio-recorder-worklet";
+
+            const AudioRecordingWorklet = `
             class AudioProcessingWorklet extends AudioWorkletProcessor {
 
               // send and clear buffer every 512 samples,
@@ -342,30 +452,78 @@
               }
             }`;
 
-          const script = new Blob(
-            [`registerProcessor("${workletName}", ${AudioRecordingWorklet})`],
-            {
-              type: "application/javascript",
-            },
+            const script = new Blob(
+              [`registerProcessor("${workletName}", ${AudioRecordingWorklet})`],
+              {
+                type: "application/javascript",
+              },
+            );
+
+            const src = URL.createObjectURL(script);
+
+            await audioContext.audioWorklet.addModule(src);
+            const recordingWorklet = new AudioWorkletNode(
+              audioContext,
+              workletName,
+            );
+
+            recordingWorklet.port.onmessage = (ev) => {
+              // worklet processes recording floats and messages converted buffer
+              const arrayBuffer = ev.data.data.int16arrayBuffer;
+
+              if (arrayBuffer) {
+                const arrayBufferString = arrayBufferToBase64(
+                  arrayBuffer,
+                );
+                socket.send(
+                  JSON.stringify({
+                    type: "realtimeInput",
+                    audioData: arrayBufferString,
+                  }),
+                );
+              }
+            };
+            source.connect(recordingWorklet);
+          },
+        );
+      }
+
+      async function getAudioInputs() {
+        try {
+          const devices = await navigator.mediaDevices
+            .enumerateDevices();
+          const audioInputs = devices.filter((device) =>
+            device.kind === "audioinput"
           );
 
-          const src = URL.createObjectURL(script);
+          micSelect.innerHTML =
+            '<option value="" disabled>Select microphone</option>';
 
-          await audioContext.audioWorklet.addModule(src);
-          const recordingWorklet = new AudioWorkletNode(audioContext, workletName);
+          audioInputs.forEach((device) => {
+            const option = document.createElement("option");
+            option.value = device.deviceId;
+            option.text = device.label ||
+              `Microphone ${micSelect.length}`;
+            micSelect.appendChild(option);
+          });
 
-          recordingWorklet.port.onmessage = (ev) => {
-            // worklet processes recording floats and messages converted buffer
-            const arrayBuffer = ev.data.data.int16arrayBuffer;
-
-            if (arrayBuffer) {
-              const arrayBufferString = arrayBufferToBase64(arrayBuffer);
-              socket.send(JSON.stringify({type: 'realtimeInput', audioData: arrayBufferString}));
-            }
-          };
-          source.connect(recordingWorklet);
-        });
+          // Select the first available microphone if none selected
+          if (audioInputs.length > 0 && !micSelect.value) {
+            micSelect.value = audioInputs[0].deviceId;
+          }
+        } catch (error) {
+          console.error("Error enumerating devices:", error);
+        }
       }
+
+      // Initialize microphone list
+      getAudioInputs();
+
+      // Update list when devices change
+      navigator.mediaDevices.addEventListener(
+        "devicechange",
+        getAudioInputs,
+      );
     </script>
   </body>
 </html>
