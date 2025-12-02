@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gemini Live Agent Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', sans-serif; }
+      .gradient-text {
+        background: linear-gradient(to right, #2563eb, #9333ea);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .pulse-ring {
+        box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.7);
+        animation: pulse-purple 2s infinite;
+      }
+      @keyframes pulse-purple {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(147, 51, 234, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(147, 51, 234, 0); }
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-4 selection:bg-purple-200">
+    <!-- Main Container -->
+    <div class="w-full max-w-lg bg-white/80 backdrop-blur-xl border border-slate-200 rounded-3xl shadow-2xl overflow-hidden">
+      
+      <!-- Header -->
+      <div class="p-8 text-center border-b border-slate-100">
+        <h1 class="text-3xl font-bold mb-2 gradient-text">Gemini Live Agent</h1>
+        <p class="text-slate-500 text-sm">Multimodal Interaction Demo</p>
+        <div id="connection-status" class="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-medium text-slate-500">
+          <span class="w-2 h-2 rounded-full bg-slate-400 transition-colors duration-300" id="status-dot"></span>
+          <span id="status-text">Disconnected</span>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="p-8 space-y-8">
+        
+        <!-- Text Input Section -->
+        <div class="space-y-3">
+          <label for="input" class="block text-sm font-medium text-slate-500 uppercase tracking-wider text-xs">Text Input</label>
+          <form class="relative group">
+            <input 
+              id="input" 
+              type="text" 
+              placeholder="Type a message..." 
+              class="w-full bg-white border border-slate-300 text-slate-900 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all placeholder:text-slate-400 shadow-sm"
+              autocomplete="off"
+            />
+            <button type="submit" class="absolute right-2 top-2 p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-lg transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            </button>
+          </form>
+        </div>
+
+        <!-- Divider -->
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+          <div class="relative flex justify-center text-xs uppercase"><span class="bg-white px-2 text-slate-400">Or use voice</span></div>
+        </div>
+
+        <!-- Voice Section -->
+        <div class="flex flex-col items-center gap-6">
+          <button id="record" class="group relative flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg shadow-purple-500/30 transition-all duration-300 hover:scale-105 active:scale-95">
+             <!-- Icon for Mic -->
+            <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            <!-- Icon for Stop (hidden by default) -->
+            <svg id="stop-icon" class="hidden" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+          </button>
+          <p id="record-status" class="text-sm font-medium text-slate-500">Click to start conversation</p>
+        </div>
+
+      </div>
+    </div>
+
+    <script>
+      const socket = new WebSocket(`ws://${window.location.host}`);
+      const messageQueue = [];
+      let queueProcessing = false;
+      let isRecording = false;
+      let source;
+      let mediaStream;
+      let audioCtx;
+      let nextStartTime = 0;
+
+      // UI Elements
+      const statusDot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+      const recordBtn = document.getElementById('record');
+      const micIcon = document.getElementById('mic-icon');
+      const stopIcon = document.getElementById('stop-icon');
+      const recordStatus = document.getElementById('record-status');
+
+      function updateStatus(connected) {
+        if (connected) {
+          statusDot.classList.remove('bg-slate-400', 'bg-red-500');
+          statusDot.classList.add('bg-green-500', 'shadow-[0_0_8px_rgba(34,197,94,0.6)]');
+          statusText.textContent = 'Connected';
+          statusText.classList.remove('text-slate-500');
+          statusText.classList.add('text-green-600');
+        } else {
+          statusDot.classList.remove('bg-green-500', 'shadow-[0_0_8px_rgba(34,197,94,0.6)]');
+          statusDot.classList.add('bg-red-500');
+          statusText.textContent = 'Disconnected';
+          statusText.classList.remove('text-green-600');
+          statusText.classList.add('text-slate-500');
+        }
+      }
+
+      socket.onopen = function() {
+        console.log('WebSocket connected');
+        updateStatus(true);
+      };
+
+      socket.onerror = function(error) {
+        console.error('WebSocket error:', error);
+        updateStatus(false);
+      };
+
+      socket.onclose = function() {
+        console.log('WebSocket disconnected');
+        updateStatus(false);
+      };
+
+      const form = document.querySelector("form");
+      const input = document.getElementById("input");
+      form.addEventListener("submit", function (event) {
+        // Prevent the default form submission behavior.
+        event.preventDefault();
+
+        if (input.value.trim() !== "") {
+          socket.send(JSON.stringify({type: 'contentUpdateText', text: input.value}));
+        }
+
+        form.reset();
+      });
+
+      function base64ToFloat32AudioData(base64String) {
+        const byteCharacters = atob(base64String);
+        const byteArray = [];
+
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteArray.push(byteCharacters.charCodeAt(i));
+        }
+
+        const audioChunks = new Uint8Array(byteArray);
+
+        // Convert Uint8Array (which contains 16-bit PCM) to Float32Array
+        const length = audioChunks.length / 2; // 16-bit audio, so 2 bytes per sample
+        const float32AudioData = new Float32Array(length);
+
+        for (let i = 0; i < length; i++) {
+          // Combine two bytes into one 16-bit signed integer (little-endian)
+          let sample = audioChunks[i * 2] | (audioChunks[i * 2 + 1] << 8);
+          // Convert from 16-bit PCM to Float32 (range -1 to 1)
+          if (sample >= 32768) sample -= 65536;
+          float32AudioData[i] = sample / 32768;
+        }
+
+        return float32AudioData;
+      }
+
+      socket.onmessage = async function (event) {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'audioStream') {
+            messageQueue.push(base64ToFloat32AudioData(message.data));
+
+            if (!queueProcessing) {
+              playAudioData();
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      async function playAudioData() {
+        queueProcessing = true;
+
+        if (!audioCtx || audioCtx.state === "closed") {
+          audioCtx = new AudioContext();
+          nextStartTime = audioCtx.currentTime;
+        }
+
+        while (messageQueue.length > 0) {
+          const audioChunks = messageQueue.shift();
+
+          // Create an AudioBuffer (Assuming 1 channel and 24k sample rate)
+          const audioBuffer = audioCtx.createBuffer(1, audioChunks.length, 24000);
+          audioBuffer.copyToChannel(audioChunks, 0);
+
+          // Create an AudioBufferSourceNode
+          const source = audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+
+          // Connect the source to the destination (speakers)
+          source.connect(audioCtx.destination);
+
+          // Schedule the audio to play
+          if (nextStartTime < audioCtx.currentTime) {
+            nextStartTime = audioCtx.currentTime;
+          }
+          source.start(nextStartTime);
+
+          // Advance the next start time by the duration of the current buffer
+          nextStartTime += audioBuffer.duration;
+        }
+        queueProcessing = false;
+      }
+
+      recordBtn.onclick = async function (evt) {
+        if (isRecording) {
+          recordStop();
+        } else {
+          await recordStart();
+        }
+      };
+
+      function recordStop() {
+        source?.disconnect();
+        mediaStream?.getTracks().forEach((track) => track.stop());
+        isRecording = false;
+        
+        // UI Updates
+        micIcon.classList.remove('hidden');
+        stopIcon.classList.add('hidden');
+        recordBtn.classList.remove('pulse-ring', 'bg-red-500', 'hover:bg-red-600');
+        recordBtn.classList.add('bg-gradient-to-br', 'from-blue-500', 'to-purple-600');
+        recordStatus.textContent = "Click to start conversation";
+        recordStatus.classList.remove('text-red-500', 'animate-pulse');
+        recordStatus.classList.add('text-slate-500');
+      }
+
+      async function recordStart() {
+        await recordAudio();
+        isRecording = true;
+
+        // UI Updates
+        micIcon.classList.add('hidden');
+        stopIcon.classList.remove('hidden');
+        recordBtn.classList.remove('bg-gradient-to-br', 'from-blue-500', 'to-purple-600');
+        recordBtn.classList.add('bg-red-500', 'hover:bg-red-600', 'pulse-ring');
+        recordStatus.textContent = "Listening...";
+        recordStatus.classList.remove('text-slate-500');
+        recordStatus.classList.add('text-red-500', 'animate-pulse');
+      }
+
+      // Recording audio logic reference:
+      // https://github.com/google-gemini/multimodal-live-api-web-console/blob/main/src/lib/audio-recorder.ts
+      function arrayBufferToBase64(buffer) {
+        let binary = "";
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+      }
+
+      async function recordAudio() {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(async (stream) => {
+          mediaStream = stream;
+          const audioContext = new AudioContext({ sampleRate: 16000 });
+          source = audioContext.createMediaStreamSource(stream);
+
+          const workletName = "audio-recorder-worklet";
+
+          const AudioRecordingWorklet = `
+            class AudioProcessingWorklet extends AudioWorkletProcessor {
+
+              // send and clear buffer every 512 samples,
+              // which at 16khz is about 32 times a second
+              buffer = new Int16Array(512);
+
+              // current write index
+              bufferWriteIndex = 0;
+
+              constructor() {
+                super();
+                this.hasAudio = false;
+              }
+
+              /**
+               * @param inputs Float32Array[][] [input#][channel#][sample#] so to access first inputs 1st channel inputs[0][0]
+               * @param outputs Float32Array[][]
+               */
+              process(inputs) {
+                if (inputs[0].length) {
+                  const channel0 = inputs[0][0];
+                  this.processChunk(channel0);
+                }
+                return true;
+              }
+
+              sendAndClearBuffer(){
+                this.port.postMessage({
+                  event: "chunk",
+                  data: {
+                    int16arrayBuffer: this.buffer.slice(0, this.bufferWriteIndex).buffer,
+                  },
+                });
+                this.bufferWriteIndex = 0;
+              }
+
+              processChunk(float32Array) {
+                const l = float32Array.length;
+
+                for (let i = 0; i < l; i++) {
+                  // convert float32 -1 to 1 to int16 -32768 to 32767
+                  const int16Value = float32Array[i] * 32768;
+                  this.buffer[this.bufferWriteIndex++] = int16Value;
+                  if(this.bufferWriteIndex >= this.buffer.length) {
+                    this.sendAndClearBuffer();
+                  }
+                }
+
+                if(this.bufferWriteIndex >= this.buffer.length) {
+                  this.sendAndClearBuffer();
+                }
+              }
+            }`;
+
+          const script = new Blob(
+            [`registerProcessor("${workletName}", ${AudioRecordingWorklet})`],
+            {
+              type: "application/javascript",
+            },
+          );
+
+          const src = URL.createObjectURL(script);
+
+          await audioContext.audioWorklet.addModule(src);
+          const recordingWorklet = new AudioWorkletNode(audioContext, workletName);
+
+          recordingWorklet.port.onmessage = (ev) => {
+            // worklet processes recording floats and messages converted buffer
+            const arrayBuffer = ev.data.data.int16arrayBuffer;
+
+            if (arrayBuffer) {
+              const arrayBufferString = arrayBufferToBase64(arrayBuffer);
+              socket.send(JSON.stringify({type: 'realtimeInput', audioData: arrayBufferString}));
+            }
+          };
+          source.connect(recordingWorklet);
+        });
+      }
+    </script>
+  </body>
+</html>

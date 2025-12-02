@@ -1,0 +1,9 @@
+{
+  "tasks": {
+    "dev": "deno run -A --env-file --watch server.ts"
+  },
+  "imports": {
+    "@google/genai": "npm:@google/genai@^1.30.0",
+    "hono": "npm:hono@^4.10.7"
+  }
+}
