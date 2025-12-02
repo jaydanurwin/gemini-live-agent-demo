@@ -1,15 +1,15 @@
-/**
- * @license
- * Copyright 2025 Google LLC
- * SPDX-License-Identifier: Apache-2.0
- */
-
+import { serve } from '@hono/node-server';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { GoogleGenAI, Modality } from '@google/genai';
 import * as types from '@google/genai';
-import {GoogleGenAI, Modality} from '@google/genai';
-import {Hono} from 'hono';
-import {cors} from 'hono/cors';
+import { WebSocketServer, WebSocket } from 'ws';
+import { readFile } from 'fs/promises';
+import dotenv from 'dotenv';
 
-const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
+dotenv.config();
+
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
 export function createBlob(audioData: string): types.Blob {
   return {data: audioData, mimeType: 'audio/pcm;rate=16000'};
@@ -85,52 +85,46 @@ async function main() {
   app.use('/*', cors());
 
   app.get('/', async (c) => {
-    const html = await Deno.readTextFile('./index.html');
+    const html = await readFile('./index.html', 'utf-8');
     return c.html(html);
   });
 
   const port = 8000;
 
-  Deno.serve({
+  const server = serve({
+    fetch: app.fetch,
     port,
-    handler: (req) => {
-      // Handle WebSocket upgrade
-      if (req.headers.get('upgrade') === 'websocket') {
-        const {socket, response} = Deno.upgradeWebSocket(req);
+  });
 
-        console.log('WebSocket client connected');
-        clients.add(socket);
+  const wss = new WebSocketServer({ server });
 
-        socket.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
+  wss.on('connection', (socket) => {
+    console.log('WebSocket client connected');
+    clients.add(socket);
 
-            if (message.type === 'contentUpdateText') {
-              session.sendClientContent({turns: message.text, turnComplete: true});
-            } else if (message.type === 'realtimeInput') {
-              session.sendRealtimeInput({media: createBlob(message.audioData)});
-            }
-          } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-          }
-        };
+    socket.on('message', (data) => {
+      try {
+        const message = JSON.parse(data.toString());
 
-        socket.onclose = () => {
-          console.log('WebSocket client disconnected');
-          clients.delete(socket);
-        };
-
-        socket.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          clients.delete(socket);
-        };
-
-        return response;
+        if (message.type === 'contentUpdateText') {
+          session.sendClientContent({turns: message.text, turnComplete: true});
+        } else if (message.type === 'realtimeInput') {
+          session.sendRealtimeInput({media: createBlob(message.audioData)});
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
       }
+    });
 
-      // Handle HTTP requests
-      return app.fetch(req);
-    },
+    socket.on('close', () => {
+      console.log('WebSocket client disconnected');
+      clients.delete(socket);
+    });
+
+    socket.on('error', (error) => {
+      console.error('WebSocket error:', error);
+      clients.delete(socket);
+    });
   });
 
   console.log(`Server running on http://localhost:${port}`);
