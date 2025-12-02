@@ -4,7 +4,7 @@
   "description": "Gemini Live Agent Demo converted to Node.js",
   "main": "server.ts",
   "scripts": {
-    "dev": "tsx --env-file=.env server.ts"
+    "dev": "tsx --watch --env-file=.env server.ts"
   },
   "keywords": [],
   "author": "",

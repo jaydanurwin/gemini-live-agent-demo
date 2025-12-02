@@ -33,6 +33,7 @@ async function main() {
     responseModalities: [
         Modality.AUDIO,
     ],
+    outputAudioTranscription: {},
     speechConfig: {
       voiceConfig: {
         prebuiltVoiceConfig: {
@@ -54,19 +55,33 @@ async function main() {
       },
       onmessage: (message: types.LiveServerMessage) => {
         console.log('Received message from the server: %s\n', debug(message));
+
+        // Handle audio output transcription
+        if (message.serverContent && message.serverContent.outputTranscription) {
+          console.log('Received output transcription:', message.serverContent.outputTranscription.text);
+          const transcription = message.serverContent.outputTranscription.text;
+          clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({type: 'textStream', data: transcription}));
+            }
+          });
+        }
+
+        // Handle audio data
         if (
           message.serverContent &&
           message.serverContent.modelTurn &&
           message.serverContent.modelTurn.parts &&
-          message.serverContent.modelTurn.parts.length > 0 &&
-          message.serverContent.modelTurn.parts[0].inlineData &&
-          message.serverContent.modelTurn.parts[0].inlineData.data
+          message.serverContent.modelTurn.parts.length > 0
         ) {
-          // Broadcast to all connected WebSocket clients
-          const audioData = message.serverContent.modelTurn.parts[0].inlineData.data;
-          clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({type: 'audioStream', data: audioData}));
+          message.serverContent.modelTurn.parts.forEach((part) => {
+            if (part.inlineData && part.inlineData.data) {
+              const audioData = part.inlineData.data;
+              clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({type: 'audioStream', data: audioData}));
+                }
+              });
             }
           });
         }

@@ -117,16 +117,6 @@
             <p id="record-status" class="text-xs font-medium text-zinc-400">Tap to start</p>
           </div>
 
-          <!-- Mic Selection -->
-          <div class="w-full max-w-[200px]">
-            <select
-              id="mic-select"
-              class="w-full bg-zinc-50 border border-zinc-200 text-zinc-600 text-xs rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-zinc-950/5 focus:border-zinc-400 transition-all cursor-pointer"
-            >
-              <option value="" disabled selected>Select microphone</option>
-            </select>
-          </div>
-
           <!-- Text Response Display -->
           <div id="text-response-container" class="w-full mt-4 hidden">
              <div class="relative">
@@ -139,6 +129,16 @@
       </div>
     </div>
 
+    <!-- Mic Selection - Bottom Right Corner -->
+    <div class="fixed bottom-4 right-4 z-50">
+      <select
+        id="mic-select"
+        class="bg-white border border-zinc-200 text-zinc-600 text-xs rounded-lg px-3 py-2 shadow-lg focus:outline-none focus:ring-2 focus:ring-zinc-950/5 focus:border-zinc-400 transition-all cursor-pointer hover:border-zinc-300"
+      >
+        <option value="" disabled selected>Select microphone</option>
+      </select>
+    </div>
+
     <script>
       const socket = new WebSocket(`ws://${window.location.host}`);
       const messageQueue = [];
@@ -148,6 +148,7 @@
       let mediaStream;
       let audioCtx;
       let nextStartTime = 0;
+      const activeAudioSources = []; // Track all active audio sources
 
       // UI Elements
       const statusDot = document.getElementById("status-dot");
@@ -284,6 +285,17 @@
           // Connect the source to the destination (speakers)
           source.connect(audioCtx.destination);
 
+          // Track this source so we can stop it later
+          activeAudioSources.push(source);
+
+          // Remove from tracking when it ends
+          source.onended = () => {
+            const index = activeAudioSources.indexOf(source);
+            if (index > -1) {
+              activeAudioSources.splice(index, 1);
+            }
+          };
+
           // Schedule the audio to play
           if (nextStartTime < audioCtx.currentTime) {
             nextStartTime = audioCtx.currentTime;
@@ -331,11 +343,31 @@
         mediaStream?.getTracks().forEach((track) => track.stop());
         isRecording = false;
         isMuted = false;
-        
+
+        // Stop all audio playback
+        messageQueue.length = 0; // Clear the message queue
+
+        // Stop all active audio sources
+        activeAudioSources.forEach((audioSource) => {
+          try {
+            audioSource.stop();
+            audioSource.disconnect();
+          } catch (e) {
+            // Source might already be stopped
+          }
+        });
+        activeAudioSources.length = 0; // Clear the array
+
+        if (audioCtx && audioCtx.state !== 'closed') {
+          audioCtx.close(); // Close the audio context to stop all audio
+        }
+        nextStartTime = 0; // Reset the start time
+        queueProcessing = false; // Reset queue processing flag
+
         // UI Updates
         connectButton.classList.remove('hidden');
         activeControls.classList.add('hidden');
-        
+
         // Reset mute state
         muteIconOn.classList.remove('hidden');
         muteIconOff.classList.add('hidden');
@@ -345,7 +377,7 @@
         recordStatus.textContent = "Tap to start";
         recordStatus.classList.remove('text-red-500');
         recordStatus.classList.add('text-zinc-400');
-        
+
         // Hide text response
         textResponseContainer.classList.add('hidden');
         textResponse.textContent = "";
